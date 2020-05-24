@@ -2,6 +2,7 @@ const axios = require('axios')
 exports.handler = getQuote
 
 async function getQuote(event, context, callback) {
+
         if(!event.queryStringParameters.symbol || !event.queryStringParameters.end || !event.queryStringParameters.token)
             throw new Error('Missing arguments')
         const res = await axios.get(`https://globalrealtime.xignite.com/v3/xGlobalRealTime.json/GetBar?IdentifierType=Symbol&Identifier=${event.queryStringParameters.symbol}&EndTime=${event.queryStringParameters.end}&Precision=Minutes&Period=15&_token=${event.queryStringParameters.token}`)
@@ -19,6 +20,6 @@ async function getQuote(event, context, callback) {
       
         return {
                 "isBase64Encoded": false,
-                "statusCode": 204
+                "statusCode": 204,
             } 
 }
