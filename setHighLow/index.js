@@ -1,5 +1,4 @@
 const axios = require('axios')
-const {uuid} = require('uuidv4')
 const AWS = require('aws-sdk')
 
 exports.handler = setHighLow
@@ -13,45 +12,39 @@ async function setHighLow() {
     }
   }
   const dbRes = await db.get(keyParams).promise()
-  const xToken = dbRes.Item
+  const xToken = dbRes.Item.value
   const date = new Date()
   if(date.getDay() == 6)
     date.setDate(date.getDate()-1)
   if(date.getDay() == 0)
     date.setDate(date.getDate()-2)
   const dateString = date.toLocaleDateString("en-US")
+  const nextDay = new Date(date)
+  nextDay.setDate(date.getDate()+1)
+  const nextDayString = nextDay.toLocaleDateString("en-US")
   const symbol = 'SPY'
-  const res = await axios.get(`https://globalrealtime.xignite.com/v3/xGlobalRealTime.json/GetBar?IdentifierType=Symbol&Identifier=${symbol}&EndTime=${dateString} 9:45 am&Precision=Minutes&Period=15&_token=${xToken['value']}`)
+  const res = await axios.get(`https://globalrealtime.xignite.com/v3/xGlobalRealTime.json/GetBar?IdentifierType=Symbol&Identifier=${symbol}&EndTime=${dateString} 9:45 am&Precision=Minutes&Period=15&_token=${xToken}`)
   if(!res.data || !res.data.Bar) {
-    console.log('Response error')
+    console.log('Response error. Response body:', res.data)
     return
   }
   const data = { date: dateString, symbol: res.data.Identifier, high: res.data.Bar.High, low: res.data.Bar.Low }
-  await db.delete({TableName: 'HighLows', Key: { date: dateString }}).promise()
-  await db.put({TableName: 'HighLows', Item: data}).promise()
-  const highParam = {
-    TableName: 'Alerts',
-    Item: {
-      id: uuid(),
-      date: new Date().toJSON(),
-      condition: `Last>=${data.high}`
-    }
-  }
-  const lowParam = {
-    TableName: 'Alerts',
-    Item: {
-      id: uuid(),
-      date: new Date().toJSON(),
-      condition: `Last<=${data.low}`
-    }
-  }
+  const highCallback = `https://www.cstupi.com/mdtrades/alert/trigger?symbol=${symbol}%26direction=high%26price=${data.high}`
+  const lowCallback = `https://www.cstupi.com/mdtrades/alert/trigger?symbol=${symbol}%26direction=low%26price=${data.low}`
+  const lessThan = '%3C'
+  const gtThan = '%3E'
   // High
-  await axios.get(`https://alerts.xignite.com/xAlerts.json/CreateAlert?IdentifierType=Symbol&Identifier=${symbol}&API=XigniteGlobalRealTime&Condition=Last%3E=${data.high}&Reset=Never&CallbackURL=https://uym7n39jz4.execute-api.us-east-1.amazonaws.com/1/alert/high?AlertId={AlertIdentifier}%26Symbol={Identifier}%26Condition={Condition}timestamp%26={timestamp}%26SystemId=${highParam.Item.id}}%26Direction=high&StartDate=${dateString}&EndDate=&_token=${xToken}`)
+  const highRes = await axios.get(`https://alerts.xignite.com/xAlerts.json/CreateAlert?IdentifierType=Symbol&Identifier=${symbol}&API=XigniteGlobalRealTime&Condition=Last${gtThan}${data.high}&Reset=Never&CallbackURL=${highCallback}&StartDate=${dateString}&EndDate=${nextDayString}&_token=${xToken}`)
   // Low
-  await axios.get(`https://alerts.xignite.com/xAlerts.json/CreateAlert?IdentifierType=Symbol&Identifier=${symbol}&API=XigniteGlobalRealTime&Condition=Last%3E=${data.low}&Reset=Never&CallbackURL=https://uym7n39jz4.execute-api.us-east-1.amazonaws.com/1/alert/high?AlertId={AlertIdentifier}%26Symbol={Identifier}%26Condition={Condition}Timestamp%26={timestamp}%26SystemId=${lowParam.Item.id}}%26Direction=low&StartDate=${dateString}&EndDate=&_token=${xToken}`)
-  // Save for history
-  await db.put(highParam).promise()
-  await db.put(lowParam).promise()
+  const lowRes = await axios.get(`https://alerts.xignite.com/xAlerts.json/CreateAlert?IdentifierType=Symbol&Identifier=${symbol}&API=XigniteGlobalRealTime&Condition=Last${lessThan}${data.low}&Reset=Never&CallbackURL=${lowCallback}&StartDate=${dateString}&EndDate=${nextDayString}&_token=${xToken}`)
+
+  if(!highRes.data) {
+    throw new Error('Failure creating high value alert')
+  }
+  if(!lowRes.data) {
+    throw new Error('Failure creating low value alert')
+  }
+console.log(nextDayString, lowRes.data)
   const hookRes = await db.get({ TableName: 'Keys', Key: { id: 'slackHook' }}).promise()
   const hook = hookRes.Item
   await axios.post(hook['value'],{ 
