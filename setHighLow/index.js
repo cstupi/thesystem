@@ -29,8 +29,8 @@ async function setHighLow() {
     return
   }
   const data = { date: dateString, symbol: res.data.Identifier, high: res.data.Bar.High, low: res.data.Bar.Low }
-  const highCallback = `https://www.cstupi.com/mdtrades/alert/trigger?symbol=${symbol}%26direction=high%26price=${data.high}`
-  const lowCallback = `https://www.cstupi.com/mdtrades/alert/trigger?symbol=${symbol}%26direction=low%26price=${data.low}`
+  const highCallback = `https://www.cstupi.com/mdtrades/alert/trigger?symbol=${symbol}%26direction=high%26price=${data.high}%26resetprice=${data.low}`
+  const lowCallback = `https://www.cstupi.com/mdtrades/alert/trigger?symbol=${symbol}%26direction=low%26price=${data.low}%26resetprice=${data.high}`
   const lessThan = '%3C'
   const gtThan = '%3E'
   // High

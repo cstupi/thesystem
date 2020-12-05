@@ -8,6 +8,8 @@ async function getQuote(event, context, callback) {
         const res = await axios.get(`https://globalrealtime.xignite.com/v3/xGlobalRealTime.json/GetBar?IdentifierType=Symbol&Identifier=${event.queryStringParameters.symbol}&EndTime=${event.queryStringParameters.end}&Precision=Minutes&Period=15&_token=${event.queryStringParameters.token}`)
         
         if(res.data) {
+            if(!res.data.Bar)
+                return { statusCode: 500, body: JSON.stringify(res.data.Outcome) }
             const data = res.data
             let date = new Date()
             date.setHours(data.Bar.UTCOffset)

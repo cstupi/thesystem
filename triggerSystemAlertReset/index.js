@@ -10,6 +10,7 @@ async function triggerSystemAlert(event, context, callback) {
     const symbol = event.queryStringParameters.symbol
     const direction = event.queryStringParameters.direction
     const price = event.queryStringParameters.price
+    const resetprice = event.queryStringParameters.resetprice
     if(!symbol || !direction || !price){
       throw new Error(`Missing query parameter`)
     }
@@ -26,8 +27,8 @@ async function triggerSystemAlert(event, context, callback) {
     const nextDay = new Date(date)
     nextDay.setDate(date.getDate()+1)
     const nextDayString = nextDay.toLocaleDateString("en-US")
-    let cb = `https://www.cstupi.com/mdtrades/alert/trigger?symbol=${symbol}%26direction=${direction}%26price=${price}`
-    let condition = direction == "high" ? `Last%3C${price}` : `Last%3E${price}`
+    let cb = `https://www.cstupi.com/mdtrades/alert/trigger?symbol=${symbol}%26direction=${direction}%26price=${price}%26resetprice=${resetprice}`
+    let condition = direction == "low" ? `Last%3C${price}` : `Last%3E${price}`
     let response = await axios.get(`https://alerts.xignite.com/xAlerts.json/CreateAlert?IdentifierType=Symbol&Identifier=${symbol}&API=XigniteGlobalRealTime&Condition=${condition}&Reset=Never&CallbackURL=${cb}&StartDate=${dateString}&EndDate=${nextDayString}&_token=${xToken}`)
     return { statusCode: 204   }
 }
